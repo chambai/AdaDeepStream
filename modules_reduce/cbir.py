@@ -25,7 +25,6 @@ def extractSingleLayer(key, layer, reset=False, layerActivationReduction='cbir',
     # store the pooling layers only
     # do not use 'flatten' with this method
     global blockDict, layerNames, pca_components, block_map
-    print('key: %s'%(key))
     if reset:
         blockDict = get_block_map(model)
         layerNames = [layers for blocks in blockDict.values() for layers in blocks.keys()]
@@ -54,13 +53,10 @@ def extractSingleLayer(key, layer, reset=False, layerActivationReduction='cbir',
         if ica_components > 0:
             ica = FastICA(n_components=ica_components)
             result = np.array(ica.fit_transform(result))
-        print(result.shape)
 
     return result
 
 def is_final_layer(model, key):
-    print(key)
-    print(model.get_layer_names()[-1])
     return model.get_layer_names()[-1] == key
 
 
@@ -175,7 +171,6 @@ def calc(layer_name, layer, blockDict):
                 hasData = True
 
         isComplete.append(hasData)
-    print(isComplete)
 
     if allTrue(isComplete):
         for n in range(0, list(list(blockDict.values())[0].values())[0].shape[0]):
@@ -314,8 +309,6 @@ def calc_importances(output_conv_map, imp_array, eval_array):
                     k /= number_of_importances
                     c += 1
 
-                    # print(np.array(imp_array).shape)
-                    # print(iZ)
                     imp_array[iZ] += k
 
         imp_array[iZ] /= c
