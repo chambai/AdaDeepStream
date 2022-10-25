@@ -1,21 +1,20 @@
 import util
-from core import dataset, train, analyse, datastream
+from core import dataset, train, analyse, datastream, pretrain_dnn
 import numpy as np
-from core.pytorch_wrapper import DNNPytorch
-
+from core.dnn_models import DNNPytorch
 from collections import defaultdict
 
-def start(dnnName, datasetName, dataCombination, drift_pattern='categorical-abrupt', reduction='dscbir', adaptation='dsadapt'):
+def start(dnn_name='vgg16', dataset_name='mnistfashion', data_combination='23456789-01', drift_pattern='categorical-abrupt', reduction='dscbir', adaptation='dsadapt'):
     if __name__ == '__main__':
-        trainedClasses = dataCombination.split('-')[0]
-        unknownClasses = dataCombination.split('-')[1]
+        trainedClasses = data_combination.split('-')[0]
+        unknownClasses = data_combination.split('-')[1]
 
         # load setup file
         util.params = None
         util.usedParams = []
-        util.setupFile = 'input/params/%s_%s_%s_%s.txt'%(dnnName,datasetName,trainedClasses,unknownClasses)
-        util.setParameter('Dnn', dnnName)
-        util.setParameter('DatasetName', datasetName)
+        util.setupFile = 'input/params/%s_%s_%s_%s.txt'%(dnn_name,dataset_name,trainedClasses,unknownClasses)
+        util.setParameter('Dnn', dnn_name)
+        util.setParameter('DatasetName', dataset_name)
         util.setParameter('DriftType', drift_pattern.split('-')[0])
         util.setParameter('DriftPattern', drift_pattern.split('-')[1])
         util.setParameter('DataClasses', '[%s]'%(','.join(list(trainedClasses))))
@@ -35,11 +34,12 @@ def start(dnnName, datasetName, dataCombination, drift_pattern='categorical-abru
         x_train, y_train, x_test, y_test = dataset.getFilteredData()
 
         # Load the DNN
-        model_filename = 'input/models/%s_%s_%s.plt' % (dnnName, datasetName, trainedClasses)
-        model = DNNPytorch()
-        if not model.load(model_filename, raise_load_exception=False):
-            stats = model.train(datasetName, util.getParameter('DataClasses'), x_train, y_train, x_test, y_test)
-            print(stats)
+        model = pretrain_dnn.loadDnn(dataset_name, list(map(int, list(trainedClasses))), x_train, y_train, x_test, y_test)
+        # model_filename = 'input/models/%s_%s_%s.plt' % (dnn_name, dataset_name, trainedClasses)
+        # model = DNNPytorch()
+        # if not model.load(model_filename, raise_load_exception=False):
+        #     stats = model.train(dataset_name, util.getParameter('DataClasses'), x_train, y_train, x_test, y_test)
+        #     print(stats)
 
         if adaptation == 'rsb':
             analyse.loadModule('modules_compare.' + adaptation)
@@ -47,7 +47,7 @@ def start(dnnName, datasetName, dataCombination, drift_pattern='categorical-abru
             # pixel data is used and this is already normalized
             # when unseen data is extracted this will be normalized, so we can pass 1 in as the maxValue
             unseenData = datastream.getData()
-            unseenInstancesObjList = analyse.startDataInputStream(model, False, 1, 1, unseenData)
+            processDataStream(unseenData, model, 1)
         else:
             # get activations
             activations, xData, yData = train.getActivations(x_train, -1, model, y_train)
@@ -55,9 +55,8 @@ def start(dnnName, datasetName, dataCombination, drift_pattern='categorical-abru
             # normalize
             maxValue = np.amax(activations)
             activations = activations / maxValue
-            util.saveReducedData('output/trainingactivations', activations, y_train)
             analyse.loadModule('modules_adapt.' + adaptation)
-            analyse.flatSetupDnn(model, activations, yData, xData) # why is y passed twice?
+            analyse.setup(model, activations, yData, xData)
             unseenData = datastream.getData()
             processDataStream(unseenData, model, maxValue)
 
@@ -69,8 +68,7 @@ def processDataStream(all_unseen_data, model, maxValue):
 
     unseenInstancesList = []
     for adapt_state, unseenData in unseenDataDict.items():
-        unseenInstancesObjs = analyse.startDataInputStream(model, False,
-                                                           maxValue, maxValue,
+        unseenInstancesObjs = analyse.startDataInputStream(model, maxValue,
                                                            unseenData)
         unseenInstancesList.append(unseenInstancesObjs)
         if unseenInstancesObjs[0].adaptClass != '-':
@@ -84,23 +82,43 @@ def processDataStream(all_unseen_data, model, maxValue):
     drift_instances = [u.id for u in unseenInstancesObjList if u.driftDetected]
     util.thisLogger.logInfo('DriftDetectionInstances=%s' % (drift_instances))
 
-    # calculate total accuracy of ND instances
-    ndUnseenPredicts = [x.correctResult for x in unseenInstancesObjList if
-                        x.discrepancyName == 'ND' and x.correctResult == x.predictedResult]
-    ndUnseenCorrectPredicts = [x.correctResult for x in unseenInstancesObjList if x.discrepancyName == 'ND']
-    acc = len(ndUnseenPredicts) / len(ndUnseenCorrectPredicts)
-    util.thisLogger.logInfo('UnseenNDInstancesAcc=%s' % (acc))
-
     analyse.stopProcessing()
 
+
+# valid parameter values
+# dnn_name: vgg16
+# dataset_name: mnistfashion, cifar10
+# data_combination: 23456789-01,  01235689-47 # choose any combination of class numbers 0 to 9 and create txt file in input/params folder
+# drift_pattern: categorical-abrupt, temporal-abrupt, categorical-gradual, temporal-gradual, categorical-incremental, categorical-reoccurring, temporal-reoccurring
+# reduction: dscbir, jsdl
+# adaptation: dsadapt, ocllwf, ocler, oclicarl, oclmirrv, noadapt, rsb
+
 # Examples - run one at a time
-# mobilenet cifar10 class data example (our method)
-start(dnnName='vgg16',
-      datasetName='mnistfashion',
-      dataCombination='01235689-47',
-      drift_pattern='categorical-abrupt',
+# mobilenet fashion class data example (our dsadapt method)
+
+# AdaDeepStream method (Ours)
+start(dnn_name='vgg16',
+      dataset_name='mnistfashion',
+      data_combination='01235689-47',
+      drift_pattern='temporal-abrupt',
       reduction='dscbir',
-      adaptation='dsadapt')
+      adaptation='noadapt') # dsadapt, noadapt
+
+# OCL adaptation methods
+# start(dnn_name='vgg16',
+#       dataset_name='mnistfashion',
+#       data_combination='01235689-47',
+#       drift_pattern='temporal-abrupt',
+#       reduction='dscbir',
+#       adaptation='oclicarl') # ocllwf, ocler, oclicarl, oclmirrv
+
+# RSB comparison method
+# start(dnn_name='vgg16',
+#       dataset_name='mnistfashion',
+#       data_combination='01235689-47',
+#       drift_pattern='temporal-abrupt',
+#       reduction='',
+#       adaptation='rsb')
 
 
 
