@@ -6,9 +6,11 @@ Created on Fri Aug  9 12:05:39 2019
 """
 import util
 from skmultiflow.data import DataStream
-from core import extract, datamanip
+from core import extract
 import numpy as np
 import datetime
+from sklearn import preprocessing
+import math
 
 moduleName = None
 module = None
@@ -28,14 +30,14 @@ def loadModule(modName, dsData=None):
         module.setData(dsData)
 
 #----------------------------------------------------------------------------
-def flatSetupDnn(dnn, flatActivations, y_train, in_x_data_train):
+def setup(dnn, flatActivations, y_train, in_x_data_train):
     global module, moduleName
     util.thisLogger.logInfo("---------- start of %s setup for activaton analysis with dnn----------"%(moduleName))
     module.setupAnalysis(dnn, flatActivations, y_train, in_x_data_train)
     util.thisLogger.logInfo("----------- end of %s setup for activaton analysis with dnn----------\n"%(moduleName))
 
 #----------------------------------------------------------------------------
-def flatSetupCompare(dnn, x_train, y_train):
+def setupCompare(dnn, x_train, y_train):
     global module, moduleName
     util.thisLogger.logInfo("---------- start of %s setup for comparison----------"%(moduleName))
     module.setupAnalysis(dnn, x_train, y_train)
@@ -60,11 +62,18 @@ def stopProcessing():
     unadapted_instance_processing_time = unadapted_window_processing_time / window_size
     avg_unadapted_instance_time = round(np.average(unadapted_instance_processing_time), 3)
     sd_unadapted_instance_time = round(np.std(unadapted_instance_processing_time), 3)
-    util.thisLogger.logInfo('AverageUnadaptedInstanceTime (ms)=%s (%s)' % (avg_unadapted_instance_time, sd_unadapted_instance_time))
+    util.thisLogger.logInfo('Average inference time (and std dev) per instance (ms)=%s (%s)' % (avg_unadapted_instance_time, sd_unadapted_instance_time))
 
-    avg_adapted_window_time = round(np.average(adapted_window_processing_time), 3)
-    sd_adapted_window_time = round(np.std(adapted_window_processing_time), 3)
-    util.thisLogger.logInfo('AverageAdaptionWindowTime (s)=%s (%s)' % (avg_adapted_window_time, sd_adapted_window_time))
+    if len(adapted_window_processing_time) > 0:
+        avg_adapted_window_time = round(np.average(adapted_window_processing_time), 3)
+        sd_adapted_window_time = round(np.std(adapted_window_processing_time), 3)
+        util.thisLogger.logInfo('Average adaptation time (and std dev) (s)=%s (%s)' % (avg_adapted_window_time, sd_adapted_window_time))
+    else:
+        if 'rsb' in util.getParameter('AnalysisModule'):
+            util.thisLogger.logInfo('Adaptation time (ms)=%s (%s)' % (avg_unadapted_instance_time, sd_unadapted_instance_time))
+            util.thisLogger.logInfo('(rsb has no adaptation time as addaptation occurs for each window and the time is included in the inferrence time)')
+        else:
+            util.thisLogger.logInfo('No adaptation occurred')
 
     unadapted_window_processing_time = np.array([])
     adapted_window_processing_time = np.array([])
@@ -78,16 +87,16 @@ def getAnalysisParams():
     return params
 
 # ----------------------------------------------------------------------------
-def startDataInputStream(dnnModel, simPrediction, maxClassValues1, maxClassValues2, unseenData):
+def startDataInputStream(dnnModel, maxClassValue, unseenData):
 
     util.thisLogger.logInfo("\n---------- start of data input stream ----------")
-    returnUnseenInstances = startDataInputStream_DataStream(dnnModel, simPrediction, maxClassValues1,maxClassValues2, unseenData)
+    returnUnseenInstances = startDataInputStream_DataStream(dnnModel, maxClassValue, unseenData)
     util.thisLogger.logInfo("----------- end of data input stream ----------\n")
 
     return returnUnseenInstances
 
 # ----------------------------------------------------------------------------
-def startDataInputStream_DataStream(dnnModel, simPrediction, maxClassValues1, maxClassValues2, unseenData):
+def startDataInputStream_DataStream(dnnModel, maxClassValue, unseenData):
     global module, moduleName, instanceProcessingStartTime, unadapted_window_processing_time, adapted_window_processing_time
     batchLength = util.getParameter('StreamBatchLength')
     analysisName = util.getParameter('AnalysisModule')
@@ -125,8 +134,7 @@ def startDataInputStream_DataStream(dnnModel, simPrediction, maxClassValues1, ma
             if 'compare' in analysisName:
                 batchActivations = batchDataInstances
             else:
-                batchActivations = online_processInstances(batchDataInstances, dnnModel, simPrediction, maxClassValues1,
-                                                           maxClassValues2)
+                batchActivations = online_processInstances(batchDataInstances, dnnModel, maxClassValue)
         else:
             # data has already been reduced/normalized etc...
             batchActivations = np.array([u.reducedInstance for u in unseenDataBatches[batchIndex-1]],dtype=float)
@@ -151,7 +159,7 @@ def startDataInputStream_DataStream(dnnModel, simPrediction, maxClassValues1, ma
                 unadapted_window_processing_time = np.append(unadapted_window_processing_time, round((window_end_time - window_start_time).total_seconds()*1000))
         else:
             if 'modules_compare' in util.getParameter('AnalysisModule'):
-                batch_result = module.processUnseenStreamBatch(batchDataInstances, batchDnnPredicts, batchTrueLabels)
+                batch_result = module.processUnseenStreamBatch(batchDataInstances, batchTrueLabels)
             else:
                 batch_result = module.processUnseenStreamBatch(batchActivations, batchDnnPredicts, batchDataInstances, batchTrueLabels, isLastBatch, trueDiscrep)
             window_end_time = datetime.datetime.now()
@@ -221,24 +229,17 @@ def startDataInputStream_DataStream(dnnModel, simPrediction, maxClassValues1, ma
 
 
 # ----------------------------------------------------------------------------
-def online_processInstances(instances, dnnModel, simPrediction, maxClassValues1, maxClassValues2):
+def online_processInstances(instances, dnnModel, maxClassValue):
     # processes the instances by getting the predictions and activations from the DNN and reducing them.
     global instanceProcessingStartTime
     instanceProcessingStartTime = datetime.datetime.now()
     util.thisLogger.logInfo('Start of instance processing, %s' % (len(instances)))
 
-    flatActivations = extract.getActivationData2(dnnModel, instances)
+    flatActivations = extract.getActivations(dnnModel, instances)
     del instances  # delete instances to save memory
 
-    # Normalize raw flat activations
-    if maxClassValues1 != None:
-        util.thisLogger.logInfo('Max value of raw activations: %s' % (maxClassValues1))
-        flatActivations, maxClassValues1 = datamanip.normalizeFlatValues(flatActivations, False, maxClassValues1)
-
     # normalise the reduced instance activations
-    if maxClassValues2 != None:
-        util.thisLogger.logInfo('Max value of reduced activations: %s' % (maxClassValues2))
-        flatActivations, maxClassValues2 = datamanip.normalizeFlatValues(flatActivations, False, maxClassValues2)
+    flatActivations, _ = normalizeFlatValues(flatActivations, False, maxClassValue)
 
     return flatActivations
 
@@ -252,8 +253,8 @@ def getPredictions(dnnModel, instances, classes=[]):
         # get the original classes it was trained on and transform the outputs
         if len(classes) == 0:
             classes = util.getParameter('DataClasses')
-        util.thisLogger.logInfo('Data classes to be used: %s' % (classes))
-        predictions = util.transformZeroIndexDataIntoClasses(predictions, classes)
+        if 'ocl' not in util.getParameter('AnalysisModule'):
+            predictions = util.transformZeroIndexDataIntoClasses(predictions, classes)
     else:
         # get the mapped values the DNN was trained on
         mapNewYValues = np.unique(mapNewYValues)
@@ -261,6 +262,29 @@ def getPredictions(dnnModel, instances, classes=[]):
         util.thisLogger.logInfo('Mapped class values to be used: %s' % (mapNewYValues))
 
     return predictions
+
+
+# ----------------------------------------------------------------------------
+def normalizeFlatValues(flatActivations, isTrainingData, maxValue=None):
+    # divides each element by the max value of the training data
+    if isTrainingData:
+        # find max value from the training data, then normalise
+        maxValue = np.amax(flatActivations)
+        util.thisLogger.logDebug('Max Value: %s' % (maxValue))
+
+    dataNormalization = 'norm'
+    if dataNormalization == 'norm':
+        flatActivations = flatActivations / maxValue
+        util.thisLogger.logInfo("Normalization (%s) applied" % (dataNormalization))
+    elif dataNormalization == 'std':
+        flatActivations = preprocessing.scale(flatActivations)
+        util.thisLogger.logInfo("Standardization (%s) applied" % (dataNormalization))
+    elif dataNormalization == 'none':
+        util.thisLogger.logInfo("No data normalisation/standardization")
+    else:
+        util.thisLogger.logInfo("unhandled data normalization of %s" % (dataNormalization))
+
+    return flatActivations, maxValue
 
 
 

@@ -8,7 +8,7 @@ import util
 import numpy as np
 import cv2
 from torchvision import datasets
-from core import dnn
+from core import pretrain_dnn
 
 isDataLoaded = False
 x_train = None
@@ -21,11 +21,8 @@ y_test_unmapped = None
 #--------------------------------------------------------------------------
 def getFilteredData(isMap=True, do_normalize=True):  # if isMap is False, then mapped data will not be mapped and the original sub-classes will be returned
     x_train, y_train, x_test, y_test = getAllData(do_normalize)
-    print(x_train.shape)
-    print(x_test.shape)
 
     classes = util.getParameter('DataClasses')
-    util.thisLogger.logInfo('Data classes to be used: %s'%(classes))
     x_train, y_train, x_test, y_test = filterData(x_train, y_train, x_test, y_test, classes)
 
     if isMap:
@@ -156,7 +153,7 @@ def getAllData(do_normalize=True):
     
     
     # if isDataLoaded == False:
-    dnnModelPath = dnn.getFullDnnModelPathAndName()
+    dnnModelPath = pretrain_dnn.getFullDnnModelPathAndName()
     #models/vgg16_cifar10_2classes01.h5
     # datasetName = dnnModelPath.split('_')[1]
     datasetName = util.getParameter('DatasetName')
@@ -256,7 +253,7 @@ def resize(x):
 #-------------------------------------------------------------------------
 def getDataShape():
     datasetName = util.getParameter('DatasetName')
-    dnnModelPath = dnn.getFullDnnModelPathAndName()
+    dnnModelPath = pretrain_dnn.getFullDnnModelPathAndName()
     isReshaped = False
     if datasetName == 'cifar10':
         out =  (32,32,3)

@@ -485,9 +485,6 @@ def applyDrift(ndUnseenDataList, dUnseenDataList):
             u.adaptState = 'after'
 
     # check there's no duplicate instances
-    if len(set(newUnseenDataList)) == len(newUnseenDataList):
-        print("newUnseenDataList success")
-
     before = [int(u.correctResult) for u in newUnseenDataList if u.adaptState == 'before']
     u_bef = np.unique(before)
     during = [int(u.correctResult) for u in newUnseenDataList if u.adaptState == 'during']
@@ -534,22 +531,16 @@ def applyCategoricalDrift(dataList):
             for i in range(n + 1):
                 data_source.append(splitDataList[i][n * class_chunk_size:n * class_chunk_size + class_chunk_size])
             interleavedLists = [val for tup in zip(*data_source) for val in tup]  # interleave the drift data so far
-            print([i.correctResult for i in interleavedLists])
-            print(len(interleavedLists))
             orderedDataList.extend(interleavedLists)
 
             displayData = ''
             for o in orderedDataList:
                 displayData += str(o.correctResult)
-            print(displayData)
-            print(len(displayData))
             pass
 
     displayData = ''
     for o in orderedDataList:
         displayData += str(o.correctResult)
-    print(displayData)
-    print(len(displayData))
 
     np.random.shuffle(remainingDataList)
     for n in remainingDataList:

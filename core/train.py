@@ -26,9 +26,8 @@ def getActivations(x_train, numActivationTrainingInstances, dnnModel, y_train):
     # The DNN is trained to output 0 or 1 only.
     mapNewYValues = util.getParameter('MapNewYValues')
     if len(mapNewYValues) == 0:
-        # get the original classes it was trained on and transform the outputs
-        util.thisLogger.logInfo('Data classes to be used: %s' % (classes))
-        y_predict = util.transformZeroIndexDataIntoClasses(y_predict, classes)
+        if 'ocl' not in util.getParameter('AnalysisModule'):
+            y_predict = util.transformZeroIndexDataIntoClasses(y_predict, classes)
         y_train_mapped = y_train
     else:
         # the data is already mapped to superclasses of 0 and 1, we do not need to do anything
@@ -48,12 +47,6 @@ def getActivations(x_train, numActivationTrainingInstances, dnnModel, y_train):
     x_train = np.delete(x_train, incorrectPredictIndexes, axis=0)
     y_train = np.delete(y_train, incorrectPredictIndexes, axis=0)
 
-    # Check that all classes appear in the training data. If not, this can skew the results
-    y_train_unique = np.sort(np.unique(y_train))
-    util.thisLogger.logInfo('TrainingInstanceClassesIncorrectRemoved=%s' % (y_train_unique))
-    if len(mapNewYValues) == 0 and not np.array_equal(classes, y_train_unique):
-        raise Exception('Missing classes in the training data. Expected: %s, got %s' % (classes, y_train_unique))
-
     correctTrainingInstances = len(x_train)
     diff = numActivationTrainingInstances - correctTrainingInstances
     util.thisLogger.logInfo('TotalTrainingInstances=%s' % (numActivationTrainingInstances))
@@ -61,6 +54,12 @@ def getActivations(x_train, numActivationTrainingInstances, dnnModel, y_train):
     util.thisLogger.logInfo('%s instances removed from training data due to incorrect prediction' % (diff))
     acc = correctTrainingInstances / numActivationTrainingInstances
     util.thisLogger.logInfo('TrainingDataAcc=%s' % (acc))
+
+    # Check that all classes appear in the training data. If not, this can skew the results
+    y_train_unique = np.sort(np.unique(y_train))
+    util.thisLogger.logInfo('TrainingInstanceClassesIncorrectRemoved=%s' % (y_train_unique))
+    if len(mapNewYValues) == 0 and not np.array_equal(classes, y_train_unique):
+        raise Exception('Missing classes in the training data. Expected: %s, got %s' % (classes, y_train_unique))
 
     # train in batches
     activationTrainingBatchSize = util.getParameter('ActivationTrainingBatchSize')
@@ -83,7 +82,7 @@ def getActivations(x_train, numActivationTrainingInstances, dnnModel, y_train):
         # Train in a loop
         util.thisLogger.logInfo(str(len(batch)) + " instances selected from training data")
 
-        activations = extract.getActivationData2(dnnModel, batch, y_batch)
+        activations = extract.getActivations(dnnModel, batch, y_batch)
         if allactivations is None:
             allactivations = activations
         else:
