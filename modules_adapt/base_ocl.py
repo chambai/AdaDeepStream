@@ -1,7 +1,7 @@
 from modules_adapt.base import Analysis
 import util
 import torch
-from traindnn.pytorch_wrapper import DNNPytorch
+from core.dnn_models import DNNPytorch
 from core import dataset
 
 

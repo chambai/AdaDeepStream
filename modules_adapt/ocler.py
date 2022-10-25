@@ -1,25 +1,19 @@
+import util
 from external.ocl.general_main_dsd import OclMgr
-from modules_adapt.base import Analysis
+from modules_adapt.base_ocl import AnalysisOcl
 
 analysis = None
 
 def setData(inDsData):
     pass
 
-# The same as hoeffddmdnn (Hoeffding tree with ddm drift detect but detecting changes only in a window and not toggling the change into other windows drift=drift_wcn_true
 def setupAnalysis(indnn, act_train_batch, y_train_batch, inData=[]):
-    # hoeffding adaptive tree drift detection with dnn adaption using 2 prev dirft deteion window data and 5 surronding windows and 3 epochs and class buffer
-    # for all data where drift is not detected.
     global analysis
-    analysis = Analysis()
-    analysis.num_window_buffers = 2
-    analysis.num_previous_buffers = 5
-    analysis.use_clustering = True
-    analysis.use_class_buffer = True
+    analysis = AnalysisOcl()
+    analysis.sequential_adapt_override = True
     analysis.setup_activation_classifiers(inData, act_train_batch, y_train_batch)
     analysis.setup_drift_detectors()
-    analysis.setup_adaptive_dnn()
-
+    analysis.adaptive_dnn = indnn
 
 
 def logTrainAccuracy(act_train, y_train):

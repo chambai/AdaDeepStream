@@ -1,4 +1,4 @@
-from core import dnn, extract
+from core import pretrain_dnn, extract
 import util
 from modules_detect import drift_wcn_true as drift
 from skmultiflow.drift_detection.ddm import DDM
@@ -9,8 +9,8 @@ from core import analyse
 import time
 import os
 import datetime
-from core import dnn as dnnModel
-from core.pytorch_wrapper import DNNPytorchAdaptive
+from core import pretrain_dnn as dnnModel
+from core.dnn_models import DNNPytorchAdaptive
 from core import dataset
 from joblib import dump, load
 import numpy as np
@@ -26,42 +26,32 @@ class Analysis:
         self.run_update_thread = False
         self.update_thread_started = False
         self.adapt = False
-        self.adapt_lock = threading.Lock()
-        self.model_lock = threading.Lock()
         self.data_lock = threading.Lock()
         self.clus_lock = threading.Lock()
-        self.act_vote = False
         self.buffer_windows_count = 0
         self.num_window_buffers = 0
         self.x_act_buffer = np.array([0])
         self.x_data_buffer = np.array([0])
         self.y_data_buffer = np.array([0])
-        self.num_previous_buffers = 0      # saves the previous mem buffers from previous drifts and uses them in all subsequent adaptions
+        self.num_previous_buffers = 0
         self.buffer_prev_windows_count = 0
         self.x_act_prev_buffer = np.array([0])
         self.x_data_prev_buffer = np.array([0])
         self.y_data_prev_buffer = np.array([0])
         self.adaption_thread_error = False
         self.adaption_error_message = ''
-        self.adaption_times = []
         self.is_adapted = False
-        self.use_artificial_drift_detection = False # instead of detecting drift, it uses true values to determine when drift has actually started
-        self.adapt_every_n_windows = 0    # once drift has been detected, adapt every n windows
         self.window_count = 0
         self.instance_count = 0
-        self.drift_triggered = False
-        self.drift_triggered_window = 0
         self.drift_trigger_count = 0
-        self.augment = False
         self.use_clustering = False
-        self.use_anomaly_detection = False
         self.clusterer = clusterer.SamKnn()
         self.x_train = None
         self.y_train = None
         self.x_train_act = None
         self.y_train_act = None
-        self.sequential_adapt_override = False
         self.use_class_buffer = False
+        self.sequential_adapt_override = False
 
     def setup_activation_classifiers(self, x_train_batch, act_train_batch, y_train_batch):
         self.x_train_act = act_train_batch
@@ -72,31 +62,7 @@ class Analysis:
             self.clusterer.partial_fit(x_train_batch, act_train_batch, y_train_batch)
             self.clus_lock.release()
 
-        if self.use_anomaly_detection:
-            self.hstrees.fit(act_train_batch, y_train_batch)
-
         self.classifiers.append(HoeffdingAdaptiveTreeClassifier())
-
-        class_file_names = []
-        file_loaded = []
-        for i, c in enumerate(self.classifiers):
-            class_name = type(c).__name__
-            self.streamClassifierNames.append(class_name)
-            class_dir = os.path.join(dnn.getDnnModelPath(), 'act_classifiers')
-            if not os.path.exists(class_dir):
-                os.mkdir(class_dir)
-            class_file_name = os.path.join(class_dir,
-                                           dnn.getDnnModelName().replace('.plt', '')) + '_' + class_name + '_' + \
-                              util.getParameter('LayerActivationReduction')[-1] + '.joblib'
-            class_file_names.append(class_file_name)
-            if os.path.exists(class_file_name):
-                self.classifiers[i] = load(class_file_name)
-                file_loaded.append(True)
-            else:
-                file_loaded.append(False)
-                # start model update thread ready for when the stream batches start arriving
-                thread = threading.Thread(target=c.fit, args=(act_train_batch, y_train_batch))
-                self.threads.append(thread)
 
         util.thisLogger.logInfo('streamClassifierNames=%s' % (';'.join(self.streamClassifierNames)))
         for i, t in enumerate(self.threads):
@@ -107,10 +73,6 @@ class Analysis:
         for t in self.threads:
             t.join()
             time.sleep(1)
-
-        for i, (c, f, file_load) in enumerate(zip(self.classifiers, class_file_names, file_loaded)):
-            if file_load == False:  # if the classifier was not loaded from file, save it to file
-                dump(c, f)
 
         util.thisLogger.logInfo('%s activation classifiers trained' % (len(self.classifiers)))
         accuracies = self.logTrainAccuracy(act_train_batch, y_train_batch)
@@ -141,7 +103,6 @@ class Analysis:
 
     def setup_drift_detectors(self):
         self.drift_detectors.append(DDM())
-        # self.drift_detectors.append(DDM())
         if len(self.drift_detectors) != len(self.classifiers):
             raise Exception('The number of drift detectors must match the number of classifiers')
 
@@ -163,18 +124,19 @@ class Analysis:
             x_train_orig, y_train_orig, _, _ = dataset.getOutOfFilteredData(isMap=True)
         return x_train_orig, y_train_orig
 
-    def setup_adaptive_dnn(self, adaption_strategies, buffer_type='none'):
-        self.adaptive_dnn = DNNPytorchAdaptive(adaption_strategies=adaption_strategies, buffer_type=buffer_type)
+    def setup_adaptive_dnn(self):
+        self.adaptive_dnn = DNNPytorchAdaptive()
         self.adaptive_dnn.load((dnnModel.getFullDnnModelPathAndName()))
         x_train_orig, y_train_orig = self.get_training_data()
         self.adaptive_dnn.fit(x_train_orig, y_train_orig)  # applies extra training if required
 
 
     def start_model_update_thread(self):
-        self.run_update_thread = True
-        update_thread = threading.Thread(target=self.updateClassifiers, args=())
-        update_thread.start()
-        util.thisLogger.logInfo('continuing...')
+        if not self.sequential_adapt_override:
+            self.run_update_thread = True
+            update_thread = threading.Thread(target=self.updateClassifiers, args=())
+            update_thread.start()
+            util.thisLogger.logInfo('continuing...')
 
 
     def updateClassifiers(self):
@@ -216,15 +178,6 @@ class Analysis:
                         classifier_copies.append(copy.deepcopy(classifier))
                 adaptive_dnn_copy = self.adaptive_dnn.get_copy()
 
-                if self.act_vote:
-                    adaptive_dnn_copy.add_activations(activations, ydata,
-                                                      classifier_copies[-1])  # add original classifier to adaptive dnn
-
-                if self.augment:
-                    ydata_2d = np.reshape(ydata, (ydata.shape[0], 1))
-                    xdata, ydata = dataset.augment_extend_data(xdata, ydata_2d, 2)
-                    ydata = np.reshape(ydata, (ydata.shape[0]))
-
                 if self.use_clustering:
                     self.clus_lock.acquire()
                     ydata = self.clusterer.predict_act(activations)
@@ -248,9 +201,6 @@ class Analysis:
                 for t in threads:
                     t.join()
                     time.sleep(1)
-
-                if self.act_vote:
-                    adaptive_dnn_copy.add_activations(activations, ydata, classifier_copies[-1])  # add adapted classifier to adaptive dnn
 
                 self.adaptive_dnn = adaptive_dnn_copy
                 self.classifiers = classifier_copies
@@ -358,17 +308,6 @@ class Analysis:
             self.buffer_prev_windows_count = 0
 
 
-    def get_training_data_sample(self):
-        idxs = np.random.choice(self.x_train.shape[0], self.num_window_buffers*util.getParameter('StreamBatchLength'), replace=False)
-        x_sample = self.x_train[idxs]
-        y_sample = self.y_train[idxs]
-
-        # get activations
-        act_sample = extract.getActivationData2(self.adaptive_dnn, x_sample, y_sample)
-
-        return act_sample, x_sample, y_sample
-
-
     def processUnseenStreamBatch(self, xdata_unseen_batch, act_unseen_batch, dnnPredict_batch, true_values, true_discrep):
         # stream is processed by CVFDT (Hoeffding adaptive tree) - Concept drift adapting Hoeffding Tree
         # batch from the stream is provided to this function
@@ -379,11 +318,6 @@ class Analysis:
 
         # Predict the unseen instances via  the classifier
         classifier_predictions = []
-        # self.model_lock.acquire()
-
-        # predict unseen instances via the DNN
-        if self.act_vote:
-            self.adaptive_dnn.add_activations(act_unseen_batch)
 
         dnnPredict_batch = analyse.getPredictions(self.adaptive_dnn, xdata_unseen_batch, self.adaptive_dnn.all_classes)
 
@@ -392,8 +326,6 @@ class Analysis:
             classifier.partial_fit(act_unseen_batch, dnnPredict_batch)
             y_classifier_batch = classifier.predict(act_unseen_batch)
             classifier_predictions.append(y_classifier_batch)
-
-        # self.model_lock.release()
 
         true_label_str = ''
         dnn_predict_str = ''
@@ -414,10 +346,6 @@ class Analysis:
             correct = [y for i, y in enumerate(ydata) if true_values[i] == int(y)]
             acc = len(correct) / len(true_values)
             util.thisLogger.logInfo('Clus A Acc: %s' % (acc))
-
-        if self.use_anomaly_detection:
-            levels = self.hstrees.eval(act_unseen_batch, true_values)
-            util.thisLogger.logInfo('HSTree lev:%s' % (''.join([str(x) for x in levels])))
 
         util.thisLogger.logInfo('')
 
@@ -457,27 +385,6 @@ class Analysis:
         classifier_predictions.clear()
 
         self.is_adapted = False
-        apply_drift = True
-        # if apply_drift:
-
-        # used for investigations ----------------------------------------------------------
-        if self.use_artificial_drift_detection:
-            if 'CE' in true_discrep or 'CD' in true_discrep:
-                self.drift_triggered = True
-                # self.drift_trigger_count += 1
-                if self.drift_trigger_count == 0:
-                    self.drift_triggered_window = self.window_count
-
-            if self.drift_triggered and self.window_count % self.adapt_every_n_windows == 0:
-                # store true data
-                self.concatenate_buffer_data(act_unseen_batch, xdata_unseen_batch, true_values)
-
-            if self.drift_triggered and self.window_count%self.adapt_every_n_windows == 0:
-                # if drift has occurred, adapt every n windows
-                drift_votes = 1
-            else:
-                drift_votes = 0
-        #-------------------------------------------------------------------------------------
 
         if drift_votes > 0:
             self.drift_trigger_count += 1
@@ -500,8 +407,6 @@ class Analysis:
             if sequential_adapt or (not sequential_adapt and self.drift_trigger_count == 1):
                 self.adapt_dnn()
                 # predict unseen instances via the DNN
-                if self.act_vote:
-                    self.adaptive_dnn.add_activations(act_unseen_batch)
                 dnnPredict_batch = analyse.getPredictions(self.adaptive_dnn, xdata_unseen_batch, self.adaptive_dnn.all_classes)
                 # if the batch contains old and new values, use the streaming classifier predictions
                 for i, classifier in enumerate(self.classifiers):
