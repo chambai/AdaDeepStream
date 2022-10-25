@@ -1,6 +1,6 @@
 import util
 from external.rsb.benchmark.er_runner_ds import DeepStreamRunner
-from core.pytorch_wrapper import DNNPytorchAdaptive
+from core.dnn_models import DNNPytorchAdaptive
 import numpy as np
 
 dsr = None
@@ -13,7 +13,7 @@ def setupAnalysis(dnn, param_x_train_batch, param_y_train_batch):
     dsr = DeepStreamRunner(dnn.model, opt)
     dsr.fit(param_x_train_batch, param_y_train_batch)
 
-def processUnseenStreamBatch(batchDataInstances, batchActivations, batchDnnPredicts, batchTrueLabels, trueDiscrep):
+def processUnseenStreamBatch(batchDataInstances, batchTrueLabels):
     global dsr
     _, predictions = dsr.partial_fit(batchDataInstances, np.array(batchTrueLabels))
 
