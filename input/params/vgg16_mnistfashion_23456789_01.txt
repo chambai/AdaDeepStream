@@ -1,0 +1,16 @@
+Dnn=vgg16
+DatasetName=mnistfashion
+DataClasses=[2,3,4,5,6,7,8,9]
+ActivationTrainingBatchSize=1000
+LayerActivationReduction=dscbir
+PadLength=18496
+AnalysisModule=modules_analysis.ocler
+NumUnseenInstances=-1
+DataDiscrepancy=sub
+DataDiscrepancyClass=[0,1]
+MapOriginalYValues=[]
+MapNewYValues=[]
+MapNewNames=none
+StreamBatchLength=100
+DriftType=categorical
+DriftPattern=abrupt
