@@ -1,6 +1,10 @@
-torch torchvision --extra-index-url https://download.pytorch.org/whl/cu113
-opencv-python
+torch torchvision --extra-index-url https://download.pytorch.org/whl/cu113 # may need to install separately via pip command and adjust cuda version
+opencv-python # may need to install separately via pip command
 scikit-multiflow
 numba
 psutil
 PyYAML
+wget
+tqdm
+tensorboard
+tensorflow
