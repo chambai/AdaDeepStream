@@ -55,11 +55,11 @@ def singleLayerActivationReduction(key, layer, reset=False, model=None, inData=N
 
     util.thisLogger.logInfo('Applying layer activation reduction: %s for layer %s' % (layerActivationReduction, key))
     for layerReductionName in layerActRedArray:
-        if layerReductionName == 'none':
-            layerReductionName = 'e_none'
-
         loadModule('modules_reduce.' + layerReductionName)
-        layer = module.extractSingleLayer(key=key, layer=layer, reset=reset,
+        if layerReductionName == 'pad' or layerReductionName == 'flatten':
+            layer = module.extractSingleLayer(key=key, layer=layer, reset=reset)
+        else:
+            layer = module.extractSingleLayer(key=key, layer=layer, reset=reset,
                                           layerActivationReduction=layerReductionName, model=model, inData=inData,
                                           y_inData=None)
     return np.asarray(layer)
