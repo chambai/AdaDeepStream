@@ -101,15 +101,15 @@ start(dnn_name='vgg16',
       dataset_name='mnistfashion',
       data_combination='01235689-47',
       drift_pattern='temporal-abrupt',
-      reduction='dscbir',
-      adaptation='noadapt') # dsadapt, noadapt
+      reduction='dscbir', # dscbir, jsdl
+      adaptation='dsadapt') # dsadapt, noadapt
 
 # OCL adaptation methods
 # start(dnn_name='vgg16',
 #       dataset_name='mnistfashion',
 #       data_combination='01235689-47',
 #       drift_pattern='temporal-abrupt',
-#       reduction='dscbir',
+#       reduction='dscbir',  # dscbir, jsdl
 #       adaptation='oclicarl') # ocllwf, ocler, oclicarl, oclmirrv
 
 # RSB comparison method
