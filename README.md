@@ -1,5 +1,5 @@
 # AdaDeepStream
-## Requirements
+## Requirements and Installation
 * Python 3.9 or higher
 * Install libraries via:
 ```
@@ -8,6 +8,19 @@ pip install -r requirements.txt
 Libraries specified assume there is a GPU.
 torch, torchvision CUDA version may need to be adjusted.
 torch torchvision and opencv-python may need to be installed directly with pip command instead of via requirements.txt.
+Unzip external/ocl.zip and external/rsb.zip in the external directory.
+OCL code is adjusted from https://doi.org/10.1016/j.neucom.2021.10.021:
+```
+Z. Mai, R. Li, J. Jeong, D. Quispe, H. Kim, S. Sanner, Online continual
+learning in image classification: An empirical survey. Neurocomputing
+469, 28–51 (2022). https://doi.org/10.1016/j.neucom.2021.10.021
+```
+RSB code is adjusted from https://doi.org/10.1109/CVPRW53098.2021.00404:
+```
+L. Korycki, B. Krawczyk, Class-Incremental Experience Replay for Continual Learning under Concept Drift, in 2021 IEEE/CVF Conference on
+Computer Vision and Pattern Recognition Workshops (CVPRW) (IEEE,
+Nashville, TN, USA, 2021), pp. 3644–3653. https://doi.org/10.1109/CVPRW53098.2021.00404
+```
 
 ## Datasets and Deep Neural Networks (DNNs)
 * CIFAR-10 and Fashion-MNIST will be downloaded during first run
