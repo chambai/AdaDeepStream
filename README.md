@@ -1,4 +1,10 @@
 # AdaDeepStream
+This is the official code for the paper [**AdaDeepStream: Streaming Adaptation to Concept Evolution in Deep Neural Networks**]([https://www.sciencedirect.com/science/article/pii/S0167865522000186?casa_token=5AfAKScbQmoAAAAA:BldzZgyiLI_LgYHUWQi7jyJEZ4c1oM94X5p0JmifG3dnkDEuhPFTMS50ahdQTmy4HCarhJwLFw](https://link.springer.com/article/10.1007/s10489-023-04812-0))
+
+![SysDescrip_tex](https://github.com/chambai/AdaDeepStream/assets/61065458/48e4ba4f-a4b4-4d0d-8deb-955408022109)
+
+AdaDeepStream is a dynamic concept evolution detection and Deep Neural Network (DNN) adaptation system using minimal true-labelled samples. Activations from within the DNN are used to enable fast streaming machine learning techniques to detect concept evolution and assist in DNN adaptation.  It can be applied to existing DNNs without the need to re-train.  It brings together the two fields of 'Online Class Incremental' and 'Concept Evolution Detection and DNN Adaptation' for high dimensional data.  In this implementation, the high dimensional data is images and the DNN is a Convolutional Neural Network.
+
 ## Requirements and Installation
 * Python 3.9 or higher
 * Install libraries via:
