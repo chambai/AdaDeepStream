@@ -44,3 +44,16 @@ start(dnn_name='vgg16',
       adaptation='dsadapt')
 ```
 main.py also includes explanation and examples of how to run the comparison techniques.
+
+## Citation
+If you use this paper/code in your research, please cite:
+```
+@article{chambers2023adadeepstream,
+  title={AdaDeepStream: streaming adaptation to concept evolution in deep neural networks},
+  author={Chambers, Lorraine and Gaber, Mohamed Medhat and Ghomeshi, Hossein},
+  journal={Applied Intelligence},
+  pages={1--21},
+  year={2023},
+  publisher={Springer}
+}
+```
