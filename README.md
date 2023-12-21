@@ -36,14 +36,18 @@ Nashville, TN, USA, 2021), pp. 3644–3653. https://doi.org/10.1109/CVPRW53098.2
 Execution starts from main.py by specifying start parameters. 
 For example the following line will run the experiment for the VGG16 DNN, Fashion-MNIST dataset, trained classes of 0, 1, 2, 3, 5, 6, 8, 9 and applying classes 4 and 7 as concept evolution. A temporal-abrupt drift pattern is applied with DS-CBIR reduction method and DSAdapt adaptation method:
 ```
-start(dnn_name='vgg16',
-      dataset_name='mnistfashion',
-      data_combination='01235689-47',
-      drift_pattern='temporal-abrupt',
-      reduction='dscbir',
-      adaptation='dsadapt')
+exec.run(dnn_name='vgg16',
+             dataset_name='mnistfashion',
+             known_classes='0-1-2-3-5-6-8-9',
+             unknown_classes='4-7',
+             drift_pattern='categorical-reoccurring',
+             deepstream_model_name='adadeepstream',
+             reduction='dscbir',  # dsdivergelast, dscbir
+             adaptation='dsadapt',  
+             data_discrepancy='CE',  
+             )
 ```
-main.py also includes explanation and examples of how to run the comparison techniques.
+exec_experiment.py also includes explanation and examples of how to run the comparison techniques.
 
 ## Citation
 If you use this paper/code in your research, please cite:
@@ -52,7 +56,9 @@ If you use this paper/code in your research, please cite:
   title={AdaDeepStream: streaming adaptation to concept evolution in deep neural networks},
   author={Chambers, Lorraine and Gaber, Mohamed Medhat and Ghomeshi, Hossein},
   journal={Applied Intelligence},
-  pages={1--21},
+  volume={53},
+  number={22},
+  pages={27323--27343},
   year={2023},
   publisher={Springer}
 }
