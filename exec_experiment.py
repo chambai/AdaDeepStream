@@ -69,11 +69,11 @@ if __name__ == '__main__':
              dataset_name='mnistfashion',
              known_classes='0-1-2-3-5-6-8-9',
              unknown_classes='4-7',
-             drift_pattern='categorical-reoccurring',
-             deepstream_model_name='adadeepstream',  # deepstreamos, adadeepstream, deepstreamensemble
-             reduction='dscbir',  # jdsiverge, dsdivergelast, dscbir, blockcbir
-             adaptation='dsadapt',  # dsadapt, dseadapt
-             data_discrepancy='CE',  # CE, Outlier
+             drift_pattern='temporal-abrupt',
+             deepstream_model_name='adadeepstream',
+             reduction='dscbir',  # dsdivergelast, dscbir
+             adaptation='dsadapt',
+             data_discrepancy='CE',
              )
 
     # # OCL adaptation methods - AdaDeepStream
