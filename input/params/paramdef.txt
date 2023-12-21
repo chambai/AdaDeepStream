@@ -5,17 +5,14 @@ ActivationTrainingBatchSize		#int			# Integer defining the number of training in
 LayerActivationReduction    #stringarray		# Data reduction techniques that are perfomed on each layer.  Element 1 will be performed across all layers, then technique 2 etc...  Allowed names are flatten, maxpooling1d (PoolingOutputSize is required), jsdiverge, jsdist, chjsdiverge, chjsdist, pad (PadLength is required).
 PadLength           #int                # output size after pooling (1D). Used if ActivationPooling is set
 AnalysisModule					# The name of the streaming analysis module
-mcod_k					#intarray			# The nominated number of neighbours for MCOD clustering
-mcod_radius				#floatarray			# The distance parameter for outlier detection for MCOD clustering. If this parameter is specified in the VariableParams parameter then a start and step must be specified
-mcod_windowsize				#int			# The window size parameter for MCOD clustering
-IncludedLayers			# A comma-separated list of layers of the DNN that are to be included in the activation extraction
 NumUnseenInstances			#int			# Integer defining the total number of unseen instances to be processed individually. This is used in conjunction with DataDiscrepancy and DataDiscrepancyFrequency to provide the specified frequency of data discrepancies defined there
-DataDiscrepancy				#none,class,sub	# The type of data discrepancy to be introduced to the unseen instances.  If set to 'none', DataDiscrepancyFrequency will be ignored
+DataDiscrepancy				#CE,CD,outlier	# The type of data discrepancy to be introduced to the unseen instances.  If set to 'none', DataDiscrepancyFrequency will be ignored
 DataDiscrepancyClass	#intarray # The class numbers of the data discrepancies, or 'all' if a specific class is not required
-MapOriginalYValues   #intarray      # A comma separated list of all Y values in the dataset
-MapNewYValues     #intarray   # A comma separated list of the number the Y values defined in MapOriginalYValues will be set to in order to provide a higher category for the dataset.  The list must be the same size as MapOriginalYValues and the location within the list reflects what the original Y value will be mapped to.  -1 means the category will not be included i the data and will be removed from the dataset.
-MapNewNames    #stringarray  # A string array of human-readable names corresponding to distinct numbers defined in MapNewYValues.  i.e. if there are 0's and 1's in MapNewYValues, then the first element of this array will correspond to the label given to value 0 and the second element will correspond to the label given to value 1.
 StreamBatchLength			#int			# Number of unseen instances to process in one batch
-RemoveIncorrectUnseenInstances     #bool   # If False, incorrectly predicted unseen instances remain in the data stream. If True, incorrectly predicted unseen instances are removed.
 DriftType                       # DriftType
 DriftPattern                    # DriftPattern
+Tune			#bool		# repeats the test until it has performed all of its tuning
+SimulateDriftDetection	#bool		# if True, drift detection will be simulated such that the drift detection is perfect.
+AdaptationTimeDelay	#int		# The amount of time is seconds that each window is delayed during adaptation
+DnnTrainEpochs			#int			# Number of epochs to train the DNN on
+DeepStreamModelName                 # the name of the deep stream model
