@@ -1,5 +1,6 @@
 from modules_reduce import cbir
 
+
 def extractSingleLayer(key, layer, reset=False, layerActivationReduction='cbirav8pNone32', model=None, inData=None, y_inData=None):
     # cbir chunking each block output into 16 sections and taking the average and splitting the final hidden layer into 32
     # chunks and averaging each chunk.  Total of 112 values per instance

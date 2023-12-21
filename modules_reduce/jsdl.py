@@ -1,6 +1,7 @@
 import util
 import numpy as np
-from modules_reduce import flatten, pad, jsdiverge
+from modules_reduce import pad, jsdiverge, flatten
+
 
 def extractSingleLayer(key, layer, reset=False, layerActivationReduction='jsdivergelast', model=None, inData=None, y_inData=None):
     # claculates jensen shannon divergence/distance between neighbouring layers and between the final hidden classification layer
