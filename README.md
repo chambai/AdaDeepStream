@@ -33,7 +33,7 @@ Nashville, TN, USA, 2021), pp. 3644–3653. https://doi.org/10.1109/CVPRW53098.2
 * DNN will be loaded and trained on first run.
 
 ## Parameter Setup and Execution
-Execution starts from main.py by specifying start parameters. 
+Execution starts from exec_experiment.py by specifying start parameters. 
 For example the following line will run the experiment for the VGG16 DNN, Fashion-MNIST dataset, trained classes of 0, 1, 2, 3, 5, 6, 8, 9 and applying classes 4 and 7 as concept evolution. A temporal-abrupt drift pattern is applied with DS-CBIR reduction method and DSAdapt adaptation method:
 ```
 exec.run(dnn_name='vgg16',
