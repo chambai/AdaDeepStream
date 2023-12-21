@@ -8,3 +8,4 @@ wget
 tqdm
 tensorboard
 tensorflow
+filelock
