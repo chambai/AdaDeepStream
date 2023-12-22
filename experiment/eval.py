@@ -85,26 +85,25 @@ class EvalMgr():
         for item in self.all_unseen_data:
             unseenDataDict[item.adaptState].append(item)
 
+        # drift_instances = [u.id for u in self.all_unseen_data if u.driftDetected]
+        # util.thisLogger.logInfo('DriftDetectionInstances=%s' % (drift_instances))
+
         total_correct = 0
         total_unseen = 0
         for i, (adapt_state, unseenData) in enumerate(unseenDataDict.items()):
             # only show the after accuracy
             if self.all_unseen_data[0].adaptClass != '-':
-                if i == len(list(unseenDataDict.items()))-1:
-                    # calculate accuracy of each section
-                    correct = [x.correctResult for x in unseenData if int(x.correctResult) == int(x.adaptClass)]
-                    acc = round(len(correct) / len(unseenData),6)
-                    util.thisLogger.logInfo('%s accuracy=%s (%s / %s)' % (adapt_state, acc, len(correct), len(unseenData)))
-                    total_correct += len(correct)
-                    total_unseen += len(unseenData)
+                # calculate accuracy of each section
+                correct = [x.correctResult for x in unseenData if int(x.correctResult) == int(x.adaptClass)]
+                acc = round(len(correct) / len(unseenData),6)
+                util.thisLogger.logInfo('%s accuracy=%s (%s / %s)' % (adapt_state, acc, len(correct), len(unseenData)))
+                total_correct += len(correct)
+                total_unseen += len(unseenData)
 
-        # correct = [x.correctResult for x in self.all_unseen_data if int(x.correctResult) == int(x.adaptClass)]
-        # acc = round(len(correct) / len(self.all_unseen_data),6)
-        # util.thisLogger.logInfo('total accuracy=%s (%s / %s)' % (acc, len(correct), len(self.all_unseen_data)))
+        correct = [x.correctResult for x in self.all_unseen_data if int(x.correctResult) == int(x.adaptClass)]
+        acc = round(len(correct) / len(self.all_unseen_data),6)
+        util.thisLogger.logInfo('total accuracy=%s (%s / %s)' % (acc, len(correct), len(self.all_unseen_data)))
 
-        # util.thisLogger.logInfo('TotalNumberOfUnseenInstances=%s' % (total_unseen))
-        # drift_instances = [u.id for u in self.all_unseen_data if u.driftDetected]
-        # util.thisLogger.logInfo('DriftDetectionInstances=%s' % (drift_instances))
 
 
     def evaluate_timings(self):
