@@ -1,11 +1,18 @@
-torch torchvision --extra-index-url https://download.pytorch.org/whl/cu113 # may need to install separately via pip command and adjust cuda version
-opencv-python # may need to install separately via pip command
-scikit-multiflow
-numba
-psutil
-PyYAML
-wget
-tqdm
-tensorboard
-tensorflow
-filelock
+# may need to run the following line separately via pip command and adjust cuda version
+torch==1.11.0 torchvision==0.12.0 --extra-index-url https://download.pytorch.org/whl/cu113
+opencv-python==4.5.5.64 # may need to install separately via pip command
+matplotlib==3.5.2
+scikit-learn==1.1.1
+scikit-multiflow==0.5.3
+numba==0.55.1
+psutil==5.9.0
+wget==3.2
+tqdm==4.64.0
+tensorboard==2.9.0
+tensorflow==2.9.0
+protobuf==3.20
+numpy==1.21.6
+scipy==1.8.1
+Pyyaml
+pandas==1.4.2
+filelock==3.7.0
