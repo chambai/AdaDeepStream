@@ -8,11 +8,9 @@ from keras.datasets import cifar10, fashion_mnist, mnist
 import util
 import numpy as np
 import cv2
-from framework import pretrain_dnn
 import os
 import torchvision
 from torchvision import datasets, transforms
-import torch
 from torch.utils.data import Dataset
 from framework.cifar100coarse import CIFAR100Coarse
 
@@ -112,6 +110,9 @@ def getAllData(do_normalize=True):
     if datasetName == 'cifar10':
         # get the cifar 10 dataset from Keras
         (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+        # x_train, y_train = get_all_data_and_store(is_training_data=True)
+        # x_test, y_test = get_all_data_and_store(is_training_data=False)
+        pass
     elif datasetName == 'cifar100':
         if util.getParameter('DataDiscrepancy') == 'CD':
             dataset_train = CIFAR100Coarse(root='input/data', train=True, transform=None, target_transform=None, download=True)
@@ -142,21 +143,12 @@ def getAllData(do_normalize=True):
     elif datasetName == 'mnistfashion':
         # get the MNIST-Fashion dataset from Keras
         (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
-        y_train = np.reshape(y_train, (y_train.shape[0],1))
-        y_test = np.reshape(y_test, (y_test.shape[0],1))
-    elif datasetName == 'mnist':
-        # get the MNIST dataset from Keras
-        (x_train, y_train), (x_test, y_test) = mnist.load_data()
-        y_train = np.reshape(y_train, (y_train.shape[0],1))
-        y_test = np.reshape(y_test, (y_test.shape[0],1))
-    elif datasetName == 'cifar10distil':
-        # get the distilled cifar 10 dataset
-        x_train, y_train, x_test, y_test = get_distilled_dataset(datasetName)
+        # x_train, y_train = get_all_data_and_store(is_training_data=True)
+        # x_test, y_test = get_all_data_and_store(is_training_data=False)
+        # y_train = np.reshape(y_train, (y_train.shape[0],1))
+        # y_test = np.reshape(y_test, (y_test.shape[0],1))
     else:
         raise ValueError("Unhandled dataset name of %s. Make sure DnnModelPath parameter contains the dataset name"%(datasetName))
-
-    if 'distil' not in datasetName:
-        pass
 
     if do_normalize:
         # Normalise
@@ -170,17 +162,6 @@ def getAllData(do_normalize=True):
 
     return x_train, y_train, x_test, y_test
 
-#-------------------------------------------------------------------------
-def get_distilled_dataset(dataset_name):
-    # gets distilled dataset with standard test images
-    if 'cifar10' in dataset_name:
-        (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-        x_train = np.load(r'c:\dsd\datasets\cifar10distil_xdata_ConvNet_ssize100_nozca_l_noaug_ckpt1000.npy')
-        y_train = np.load(r'c:\dsd\datasets\cifar10distil_ydata_ConvNet_ssize100_nozca_l_noaug_ckpt1000.npy')
-    else:
-        raise Exception('unhandled distilled dataset of %s' % (dataset_name))
-
-    return x_train, y_train, x_test, y_test
 #-------------------------------------------------------------------------
 def resize(x):
     out = []
@@ -279,39 +260,13 @@ def getDataMap(unmappedClasses):
     mapAsString = ''.join(map(str,distinctMapNewYValues))
     return mapAsString
 
-#--------------------------------------------------------------------------
-def load_distilled_data(classes):
-    num_images_per_class = 50    # 1, 10, 50
-    dir = os.getcwd()
-    data_dir = os.path.join(dir, 'traindnn', 'data','dist_traj',util.getParameter('DatasetName'))
-    x_file = os.path.join(data_dir, str(num_images_per_class), 'images_best.pt')
-    y_file = os.path.join(data_dir, str(num_images_per_class), 'labels_best.pt')
-    x_data = torch.load(x_file)
-    x_data = np.reshape(x_data, (x_data.shape[0], 32,32,3))
-    y_data = torch.load(y_file)
-
-    # filter the data to classes that are in self.all_classes
-    idxs = []
-    for c in classes:
-        for i, y in enumerate(y_data):
-            if c == y:
-                idxs.append(i)
-
-    x_data = x_data[idxs]
-    y_data = y_data[idxs]
-
-    x_data.cpu().detach().numpy()
-    y_data.cpu().detach().numpy()
-
-    return x_data, y_data
-
 
 #--------------------------------------------------------------------------
 # not currently used
 def get_all_data_and_store(is_training_data=False):
     dataset_name = util.getParameter('DatasetName')
     act_red = util.getParameter('LayerActivationReduction')[-1]
-    data_folder_name = r'R:\data_%s_%s'%(act_red, util.getParameter('DeepLearningFramework'))
+    data_folder_name = 'input/data'
     data_file_name = os.path.join(data_folder_name, util.getParameter('DatasetName'))
     if is_training_data:
         data_file_name += '_train'
@@ -338,7 +293,7 @@ def get_all_data_and_store(is_training_data=False):
 
     x = data['x']
     y = data['y']
-    x = trainset.data/255
+    x = x/255
 
     return x, y
 

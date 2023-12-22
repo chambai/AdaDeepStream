@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset
-from external.ocl.models.resnet import Reduced_ResNet18
+# from external.ocl.models.resnet import Reduced_ResNet18
 from framework import pretrain_dnn, dataset
 from framework.dnn_wrapper import DNN
 from torch.utils.data import TensorDataset
@@ -135,11 +135,6 @@ class DNNPytorch(DNN):
             model = mobilenet_v2(pretrained=True)  # mobilenet v1 is not available in pytorch
         elif base_model_name == 'vgg16':
             model = vgg16(pretrained=True)
-        elif base_model_name == 'vgg16bn':
-            model = vgg16_bn(pretrained=True)
-        elif base_model_name == 'resnet18':
-            # model = resnet18(pretrained=True)
-            model = Reduced_ResNet18(len(util.getParameter('DataClasses')))
         else:
             raise Exception('unhandled model name of %s ' % (base_model_name))
         return model
@@ -718,30 +713,6 @@ class DNNPytorchAdaptive(DNNPytorch):
 
         util.thisLogger.logInfo('Adaptation Block Indexes: %s'%(indexes))
         return indexes
-
-
-
-    def __load_distilled_data(self):
-        num_images_per_class = 50    # 1, 10, 50
-        dir = os.getcwd()
-        data_dir = os.path.join(dir, 'traindnn', 'data','dist_traj',util.getParameter('DatasetName'))
-        x_file = os.path.join(data_dir, str(num_images_per_class), 'images_best.pt')
-        y_file = os.path.join(data_dir, str(num_images_per_class), 'labels_best.pt')
-        x_data = torch.load(x_file)
-        x_data = np.reshape(x_data, (x_data.shape[0], 32,32,3))
-        y_data = torch.load(y_file)
-
-        # filter the data to classes that are in self.all_classes
-        idxs = []
-        for c in self.all_classes:
-            for i, y in enumerate(y_data):
-                if c == y:
-                    idxs.append(i)
-
-        x_data = x_data[idxs]
-        y_data = y_data[idxs]
-
-        return x_data, y_data
 
 
     def __get_new_model(self, model, num_units, num_classes):
